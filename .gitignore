@@ -53,3 +53,4 @@ dkms.conf
 
 hsh
 zig-cache/
+zig-out/
