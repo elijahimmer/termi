@@ -1,4 +1,4 @@
-pub const csi = "\u{1B}[";
+pub const CSI = "\u{1B}[";
 
 /// Kitty's Progressive Enhancement:
 /// https://sw.kovidgoyal.net/kitty/keyboard-protocol/
@@ -16,15 +16,15 @@ pub const ProgressiveEnhancement = packed struct {
 };
 
 pub fn set_progressive(writer: anytype, enhancement: ProgressiveEnhancement) @TypeOf(writer).Error!void {
-    try writer.print(csi ++ ">{}u", .{@as(u5, @bitCast(enhancement))});
+    try writer.print(CSI ++ ">{}u", .{@as(u5, @bitCast(enhancement))});
 }
 
 pub fn remove_progressive(writer: anytype, enhancement: ProgressiveEnhancement) @TypeOf(writer).Error!void {
-    try writer.print(csi ++ "<{}u", .{@as(u5, @bitCast(enhancement))});
+    try writer.print(CSI ++ "<{}u", .{@as(u5, @bitCast(enhancement))});
 }
 
 pub fn reset_progressive(writer: anytype) @TypeOf(writer).Error!void {
-    try writer.print(csi ++ "<{}u", .{std.math.maxInt(u5)});
+    try writer.print(CSI ++ "<{}u", .{std.math.maxInt(u5)});
 }
 
 pub const Commands = enum {
@@ -72,27 +72,27 @@ pub const Commands = enum {
 pub fn print_command(writer: anytype, comptime command: Commands, args: anytype) @TypeOf(writer).Error!void {
     switch (command) {
         // cursor commands
-        .home => try writer.writeAll(csi ++ "H"),
-        .goto => try writer.print(csi ++ "{};{}H", args),
-        .move_up => try writer.print(csi ++ "{}A", args),
-        .move_down => try writer.print(csi ++ "{}B", args),
-        .move_right => try writer.print(csi ++ "{}C", args),
-        .move_left => try writer.print(csi ++ "{}D", args),
-        .next_line => try writer.print(csi ++ "{}E", args),
-        .prev_line => try writer.print(csi ++ "{}F", args),
-        .goto_column => try writer.print(csi ++ "{}G", args),
-        .get_pos => try writer.writeAll(csi ++ "6n"),
-        .save_pos => try writer.writeAll(csi ++ "s"),
-        .restore_pos => try writer.writeAll(csi ++ "u"),
+        .home => try writer.writeAll(CSI ++ "H"),
+        .goto => try writer.print(CSI ++ "{};{}H", args),
+        .move_up => try writer.print(CSI ++ "{}A", args),
+        .move_down => try writer.print(CSI ++ "{}B", args),
+        .move_right => try writer.print(CSI ++ "{}C", args),
+        .move_left => try writer.print(CSI ++ "{}D", args),
+        .next_line => try writer.print(CSI ++ "{}E", args),
+        .prev_line => try writer.print(CSI ++ "{}F", args),
+        .goto_column => try writer.print(CSI ++ "{}G", args),
+        .get_pos => try writer.writeAll(CSI ++ "6n"),
+        .save_pos => try writer.writeAll(CSI ++ "s"),
+        .restore_pos => try writer.writeAll(CSI ++ "u"),
 
         // common private modes
-        .enter_alternate_buffer => try writer.writeAll(csi ++ "?1049h"),
-        .leave_alternate_buffer => try writer.writeAll(csi ++ "?1049l"),
+        .enter_alternate_buffer => try writer.writeAll(CSI ++ "?1049h"),
+        .leave_alternate_buffer => try writer.writeAll(CSI ++ "?1049l"),
 
         // progressive enhancement
-        .progressive_enable => try writer.print(csi ++ ">{}u", args),
-        .progressive_pop => try writer.writeAll(csi ++ "<u"),
-        .progressive_disable => try writer.print(csi ++ "<{}u", args),
+        .progressive_enable => try writer.print(CSI ++ ">{}u", args),
+        .progressive_pop => try writer.writeAll(CSI ++ "<u"),
+        .progressive_disable => try writer.print(CSI ++ "<{}u", args),
 
         else => @compileError("Command Unimplemented: " ++ @tagName(command)),
     }
