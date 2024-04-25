@@ -3,7 +3,7 @@ pub fn main() !void {
     const stdout = stdout_file.writer();
 
     try term_mode.set_raw(stdout_file.handle);
-    defer term_mode.reset(stdout_file.handle) catch {};
+    //defer term_mode.reset(stdout_file.handle) catch {};
 
     try ec.print_command(stdout, .enter_alternate_buffer, .{});
     defer ec.print_command(stdout, .leave_alternate_buffer, .{}) catch {};
@@ -15,7 +15,7 @@ pub fn main() !void {
         .keys_as_escape_codes = true,
         .associated_text = true,
     });
-    defer progressive.deinitPopFrames() catch {};
+    defer progressive.deinitCleanUp() catch {};
 
     try ec.print_command(stdout, .home, .{});
 
@@ -62,7 +62,7 @@ pub fn panic(message: []const u8, error_return_trace: ?*std.builtin.StackTrace, 
 
     term_mode.reset(stdout_file.handle) catch {};
     ec.print_command(stdout, .leave_alternate_buffer, .{}) catch {};
-    ProgressiveEnhancement.pop_many(stdout, 1) catch {};
+    ProgressiveEnhancement.popMany(stdout, 1) catch {};
 
     std.builtin.default_panic(message, error_return_trace, ret_addr);
 }
