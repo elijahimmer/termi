@@ -27,7 +27,7 @@ pub fn read_loop(stream: anytype, comptime callback: *const fn (Key, []const u8,
 
             switch (read_state) {
                 .normal => switch (char) {
-                    Char.ESC => read_state = .escaped,
+                    chars.ESC => read_state = .escaped,
                     else => {
                         key.code = char;
                         break :read_loop;
@@ -73,6 +73,8 @@ pub fn read_loop(stream: anytype, comptime callback: *const fn (Key, []const u8,
 
         if (@as(u9, @bitCast(key.modifier)) > 0) key.modifier = @bitCast(@as(u9, @bitCast(key.modifier)) - 1);
 
+        assert(key.code != 0);
+
         switch (try @call(.auto, callback, .{ key, chord.constSlice(), args })) {
             .success => {},
             .stop => return,
@@ -80,13 +82,15 @@ pub fn read_loop(stream: anytype, comptime callback: *const fn (Key, []const u8,
     }
 }
 
+/// just keeps the 4 least significant bits
+/// In ASCII that turns the digit into it's number value
 pub fn char_to_int(char: u8) u4 {
     return @as(u4, @truncate(char));
 }
 
-const Key = @import("key.zig").Key;
-
-const ec = @import("escape_codes.zig");
-const Char = ec.Char;
+const termi = @import("termi.zig");
+const chars = termi.chars;
+const Key = termi.Key;
 
 const std = @import("std");
+const assert = std.debug.assert;

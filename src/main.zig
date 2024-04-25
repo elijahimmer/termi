@@ -8,14 +8,14 @@ pub fn main() !void {
     try ec.print_command(stdout, .enter_alternate_buffer, .{});
     defer ec.print_command(stdout, .leave_alternate_buffer, .{}) catch {};
 
-    try ec.set_progressive(stdout, .{
+    var progressive = try enhancementManagerWithSet(stdout, .{
         .disambiguate = true,
         .event_types = true,
         .alternate_keys = true,
         .keys_as_escape_codes = true,
         .associated_text = true,
     });
-    defer ec.reset_progressive(stdout) catch {};
+    defer progressive.deinitPopFrames() catch {};
 
     try ec.print_command(stdout, .home, .{});
 
@@ -32,7 +32,7 @@ pub fn main() !void {
 pub fn output_char(key: Key, chord: []const u8, args: anytype) !read_loop.ReturnCode {
     const stdout, var bw = args;
 
-    if (key.code == 'c' and key.modifier.ctrl) return .stop;
+    if (key.code == 3 or (key.code == 'c' and key.modifier.ctrl)) return .stop;
 
     if (key.code <= std.math.maxInt(u8)) {
         try print_ascii(stdout, @intCast(key.code));
@@ -57,10 +57,12 @@ pub fn print_ascii(writer: anytype, char: u8) @TypeOf(writer).Error!void {
 
 /// Overrides the default panic to reset terminal mode
 pub fn panic(message: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
-    const stdout = std.io.getStdOut().writer();
+    const stdout_file = std.io.getStdOut();
+    const stdout = stdout_file.writer();
 
-    ec.reset_progressive(stdout) catch {};
+    term_mode.reset(stdout_file.handle) catch {};
     ec.print_command(stdout, .leave_alternate_buffer, .{}) catch {};
+    ProgressiveEnhancement.pop_many(stdout, 1) catch {};
 
     std.builtin.default_panic(message, error_return_trace, ret_addr);
 }
@@ -69,13 +71,15 @@ pub const std_options: std.Options = .{
     .keep_sigpipe = true,
 };
 
-const ec = @import("escape_codes.zig");
-const read_loop = @import("read_loop.zig");
-const term_mode = @import("term_mode.zig");
+const termi = @import("termi.zig");
+const term_mode = termi.term_mode;
+const ec = termi.escape_codes;
+const Key = termi.Key;
+const chars = termi.chars;
+const read_loop = termi.read_loop;
 
-const Key = @import("key.zig").Key;
-
-const log = std.log.scoped(.libtermi);
+const enhancementManagerWithSet = termi.enhancementManagerWithSet;
+const ProgressiveEnhancement = termi.ProgressiveEnhancement;
 
 const std = @import("std");
 const io = std.io;
