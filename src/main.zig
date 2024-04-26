@@ -1,21 +1,22 @@
 pub fn main() !void {
     const stdout_file = std.io.getStdOut();
-    const stdout = stdout_file.writer();
+    var bw = std.io.bufferedWriter(stdout_file.writer());
+    const stdout = bw.writer();
 
-    try term_mode.set_raw(stdout_file.handle);
-    //defer term_mode.reset(stdout_file.handle) catch {};
+    var term_manager = termManager(stdout_file.writer());
+    defer term_manager.deinit() catch {};
 
-    try ec.print_command(stdout, .enter_alternate_buffer, .{});
-    defer ec.print_command(stdout, .leave_alternate_buffer, .{}) catch {};
+    global_term_manager = &term_manager;
 
-    var progressive = try enhancementManagerWithSet(stdout, .{
+    try term_manager.enter_alternate_screen();
+    try term_manager.set_raw_mode();
+    try term_manager.set_progressive(.{
         .disambiguate = true,
         .event_types = true,
         .alternate_keys = true,
         .keys_as_escape_codes = true,
         .associated_text = true,
     });
-    defer progressive.deinitCleanUp() catch {};
 
     try ec.print_command(stdout, .home, .{});
 
@@ -23,46 +24,64 @@ pub fn main() !void {
     var br = std.io.bufferedReader(stdin_file.reader());
     const stdin = br.reader();
 
-    var bw = std.io.bufferedWriter(stdout);
-    const stdout_buffered = bw.writer();
+    while (true) {
+        //try print_ascii(stdout, try stdin.readByte());
+        //try bw.flush();
+        const in = try termi.input.read_input(stdin);
 
-    try read_loop.read_loop(stdin, &output_char, .{ stdout_buffered, &bw });
-}
+        switch (in) {
+            .normal => |char| {
+                try print_ascii(stdout, char);
+                if (char == 3) break;
+            },
+            .escaped => |escaped| {
+                try escaped.print(stdout);
+            },
+            .csi => |csi| {
+                const parsed = termi.input.parseCsiInput(csi);
 
-pub fn output_char(key: Key, chord: []const u8, args: anytype) !read_loop.ReturnCode {
-    const stdout, var bw = args;
+                if (@as(termi.input.InputEventTag, parsed) == .unicode) {
+                    if (parsed.unicode.code == 'c' and parsed.unicode.modifier.ctrl) break;
+                }
 
-    if (key.code == 3 or (key.code == 'c' and key.modifier.ctrl)) return .stop;
+                try parsed.print(stdout);
+            },
+        }
 
-    if (key.code <= std.math.maxInt(u8)) {
-        try print_ascii(stdout, @intCast(key.code));
+        try bw.flush();
     }
-
-    try stdout.print("\t'", .{});
-    for (chord) |char| try print_ascii(stdout, char);
-    try stdout.print("'\t{}\x0d\n", .{key});
-
-    try bw.flush();
-
-    return .success;
 }
+
+//pub fn output_char(key: Key, chord: []const u8, args: anytype) !read_loop.ReturnCode {
+//    const stdout, var bw = args;
+//
+//    if (key.code == 3 or (key.code == 'c' and key.modifier.ctrl)) return .stop;
+//
+//    if (key.code <= std.math.maxInt(u8)) try print_ascii(stdout, @intCast(key.code));
+//
+//    try stdout.print("\t'", .{});
+//    for (chord) |char| try print_ascii(stdout, char);
+//    try stdout.print("'\t{}\x0d\n", .{key});
+//
+//    try bw.flush();
+//
+//    return .success;
+//}
 
 pub fn print_ascii(writer: anytype, char: u8) @TypeOf(writer).Error!void {
     switch (char) {
+        // 1 => "^A", 2 => "^B", 3 => "^C", etc
         0...31 => try writer.print("^{c}", .{'A' - 1 + char}),
-        127 => try writer.print("DEL", .{}),
+        127 => try writer.print("Backspace", .{}),
         else => try writer.print("{c}", .{char}),
     }
 }
 
+var global_term_manager: ?*TermManager(std.fs.File.Writer) = null;
+
 /// Overrides the default panic to reset terminal mode
 pub fn panic(message: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
-    const stdout_file = std.io.getStdOut();
-    const stdout = stdout_file.writer();
-
-    term_mode.reset(stdout_file.handle) catch {};
-    ec.print_command(stdout, .leave_alternate_buffer, .{}) catch {};
-    ProgressiveEnhancement.popMany(stdout, 1) catch {};
+    if (global_term_manager) |tm| tm.deinit() catch {};
 
     std.builtin.default_panic(message, error_return_trace, ret_addr);
 }
@@ -72,14 +91,11 @@ pub const std_options: std.Options = .{
 };
 
 const termi = @import("termi.zig");
-const term_mode = termi.term_mode;
 const ec = termi.escape_codes;
-const Key = termi.Key;
 const chars = termi.chars;
-const read_loop = termi.read_loop;
 
-const enhancementManagerWithSet = termi.enhancementManagerWithSet;
-const ProgressiveEnhancement = termi.ProgressiveEnhancement;
+const termManager = termi.termManager;
+const TermManager = termi.TermManager;
 
 const std = @import("std");
 const io = std.io;

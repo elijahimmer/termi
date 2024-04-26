@@ -19,8 +19,8 @@ pub const Commands = enum {
     cursor_visible,
     restore_screen,
     save_screen,
-    enter_alternate_buffer,
-    leave_alternate_buffer,
+    enter_alternate_screen,
+    leave_alternate_screen,
 
     /// Entire screen
     erase_screen,
@@ -59,8 +59,8 @@ pub fn print_command(writer: anytype, comptime command: Commands, args: anytype)
         .restore_pos => try writer.writeAll(CSI ++ "u"),
 
         // common private modes
-        .enter_alternate_buffer => try writer.writeAll(CSI ++ "?1049h"),
-        .leave_alternate_buffer => try writer.writeAll(CSI ++ "?1049l"),
+        .enter_alternate_screen => try writer.writeAll(CSI ++ "?1049h"),
+        .leave_alternate_screen => try writer.writeAll(CSI ++ "?1049l"),
 
         // progressive enhancement
         .progressive_enable => try writer.print(CSI ++ ">{}u", args),

@@ -5,22 +5,17 @@
 /// You should make sure you reset your enhancement stack on panic so a panic doesn't
 /// ruin the terminal.
 ///
-/// Make sure you .deinit() or .deinitCleanup() to make sure you don't leave
+/// Make sure you .deinit() to make sure you don't leave
 /// enhancement frames behind.
-pub fn EnhancementManager(comptime WriterType: type) type {
+pub fn EnhancementStack(comptime WriterType: type) type {
     return struct {
         writer: WriterType,
         enhancement_frames: u8 = 0,
 
         const Self = @This();
-        const Error = WriterType.Error;
 
-        /// makes sure the manager doesn't leak
-        pub fn deinit(self: *Self) error{leak}!void {
-            if (self.enhancement_frames > 0) return error.leak;
-        }
-
-        pub fn deinitCleanUp(self: *Self) WriterType.Error!void {
+        /// Cleans up and resets all enhancements
+        pub fn deinit(self: *Self) WriterType.Error!void {
             if (self.enhancement_frames > 0) self.popMany(self.enhancement_frames) catch |err| switch (err) {
                 error.@"Popped More Enhancement Frames Than Pushed", error.@"Cannot Pop Zero Enhancement Frames" => unreachable,
                 else => |e| return e,
@@ -73,27 +68,27 @@ pub fn EnhancementManager(comptime WriterType: type) type {
 /// This keeps track of the enhancement stack frames you push and pop so you don't
 /// mess up other applications by leaving some frames over, or changing theirs.
 ///
-/// Make sure you .deinit() or .deinitCleanup() to make sure you don't leave
+/// Make sure you .deinit() to make sure you don't leave
 /// enhancement frames behind.
-pub fn enhancementManager(writer: anytype) EnhancementManager(@TypeOf(writer)) {
+pub fn enhancementStack(writer: anytype) EnhancementStack(@TypeOf(writer)) {
     return .{ .writer = writer };
 }
 
 /// Create a Enhancement Manager and immediately the enhancement onto the stack.
-pub fn enhancementManagerWithSet(writer: anytype, enhancement: ProgressiveEnhancement) EnhancementManager(@TypeOf(writer)).PushError!EnhancementManager(@TypeOf(writer)) {
-    var self: EnhancementManager(@TypeOf(writer)) = .{ .writer = writer };
+pub fn enhancementStackWithSet(writer: anytype, enhancement: ProgressiveEnhancement) EnhancementStack(@TypeOf(writer)).PushError!EnhancementStack(@TypeOf(writer)) {
+    var self: EnhancementStack(@TypeOf(writer)) = .{ .writer = writer };
     try self.push(enhancement);
     return self;
 }
 
-test EnhancementManager {
+test EnhancementStack {
     const expectError = testing.expectError;
     var write_buffer = std.ArrayList(u8).init(testing.allocator);
     defer write_buffer.deinit();
 
     const writer = write_buffer.writer();
 
-    var man = enhancementManager(writer);
+    var man = enhancementStack(writer);
 
     try expectError(error.@"No Enhancement Frames To Pop", man.pop());
     try expectError(error.@"Popped More Enhancement Frames Than Pushed", man.popMany(1));
@@ -104,7 +99,7 @@ test EnhancementManager {
     for (0..100) |_| try man.push(.{});
     try expectError(error.@"Too Many Enhancement Frames Pushed", man.push(.{}));
 
-    try man.deinitCleanUp();
+    try man.deinit();
 
     try testing.expectEqualStrings(write_buffer.items, (CSI ++ ">0u") ** 255 ++ CSI ++ "<255u");
 }
