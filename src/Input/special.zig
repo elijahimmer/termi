@@ -1,4 +1,4 @@
-pub const SpecialInputType = enum {
+pub const Special = enum {
     escape, // 27 u
     enter, // 13 u
     tab, // 9 u

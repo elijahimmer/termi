@@ -1,8 +1,3 @@
-const termi = @This();
-test termi {
-    std.testing.refAllDeclsRecursive(termi);
-}
-
 pub const escape_codes = @import("escape_codes.zig");
 
 const term_manager = @import("term_manager.zig");
@@ -15,7 +10,7 @@ pub const enhancementStack = progressive_enhancement.enhancementStack;
 pub const enhancementStackWithSet = progressive_enhancement.enhancementStackWithSet;
 pub const EnhancementStack = progressive_enhancement.EnhancementStack;
 
-pub const input = @import("input/input.zig");
+pub const Input = @import("Input.zig");
 
 pub const chars = @import("chars.zig");
 

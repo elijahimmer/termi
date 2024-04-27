@@ -1,3 +1,40 @@
+/// Kitty's Progressive Enhancement:
+/// https://sw.kovidgoyal.net/kitty/keyboard-protocol/
+pub const ProgressiveEnhancement = packed struct(u5) {
+    /// Disambiguate escape codes
+    disambiguate: bool = false,
+    /// Report event types
+    event_types: bool = false,
+    /// Report alternate keys
+    alternate_keys: bool = false,
+    /// Report all keys as escape codes
+    keys_as_escape_codes: bool = false,
+    /// Report associated text
+    associated_text: bool = false,
+
+    /// Sets the terminal's current progressive mode.
+    /// Should only be used after you have pushed
+    pub fn set(self: @This(), writer: anytype) @TypeOf(writer).Error!void {
+        try writer.print(CSI ++ "={}u", .{@as(u5, @bitCast(self))});
+    }
+
+    /// Pushes a progressive onto the stack.
+    /// Should only really be used once, and it should be poped whenever you are done using it.
+    pub fn push(self: @This(), writer: anytype) @TypeOf(writer).Error!void {
+        try writer.print(CSI ++ ">{}u", .{@as(u5, @bitCast(self))});
+    }
+
+    /// disables select progressive enhancements
+    pub fn pop(writer: anytype) @TypeOf(writer).Error!void {
+        try ProgressiveEnhancement.popMany(writer, 1);
+    }
+
+    /// pop many buffer stacks
+    pub fn popMany(writer: anytype, count: usize) @TypeOf(writer).Error!void {
+        try writer.print(CSI ++ "<{}u", .{count});
+    }
+};
+
 /// This keeps track of the stacks put onto and popped on the terminal's enhancement
 /// stack. This helps prevent your application from leaving some stack frames left
 /// and botch existing stack frames so you don't mess up other applications.
@@ -103,43 +140,6 @@ test EnhancementStack {
 
     try testing.expectEqualStrings(write_buffer.items, (CSI ++ ">0u") ** 255 ++ CSI ++ "<255u");
 }
-
-/// Kitty's Progressive Enhancement:
-/// https://sw.kovidgoyal.net/kitty/keyboard-protocol/
-pub const ProgressiveEnhancement = packed struct(u5) {
-    /// Disambiguate escape codes
-    disambiguate: bool = false,
-    /// Report event types
-    event_types: bool = false,
-    /// Report alternate keys
-    alternate_keys: bool = false,
-    /// Report all keys as escape codes
-    keys_as_escape_codes: bool = false,
-    /// Report associated text
-    associated_text: bool = false,
-
-    /// Sets the terminal's current progressive mode.
-    /// Should only be used after you have pushed
-    pub fn set(self: @This(), writer: anytype) @TypeOf(writer).Error!void {
-        try writer.print(CSI ++ "={}u", .{@as(u5, @bitCast(self))});
-    }
-
-    /// Pushes a progressive onto the stack.
-    /// Should only really be used once, and it should be poped whenever you are done using it.
-    pub fn push(self: @This(), writer: anytype) @TypeOf(writer).Error!void {
-        try writer.print(CSI ++ ">{}u", .{@as(u5, @bitCast(self))});
-    }
-
-    /// disables select progressive enhancements
-    pub fn pop(writer: anytype) @TypeOf(writer).Error!void {
-        try ProgressiveEnhancement.popMany(writer, 1);
-    }
-
-    /// pop many buffer stacks
-    pub fn popMany(writer: anytype, count: usize) @TypeOf(writer).Error!void {
-        try writer.print(CSI ++ "<{}u", .{count});
-    }
-};
 
 const termi = @import("termi.zig");
 const CSI = termi.escape_codes.CSI;

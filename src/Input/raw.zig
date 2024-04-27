@@ -1,16 +1,23 @@
-pub const RawInputTag = enum {
+pub const Chord = std.BoundedArray(16, u8);
+
+pub const RawInput = struct {
+    chord: Chord,
+    input_type: RawInputType,
+};
+
+pub const RawInputTypeTag = enum {
     normal,
     escaped,
     csi,
 };
 
-pub const RawInput = union(RawInputTag) {
+pub const RawInputType = union(RawInputTypeTag) {
     normal: u8,
-    escaped: EscapedInput,
-    csi: CsiInput,
+    escaped: RawInputEscaped,
+    csi: RawInputCsi,
 };
 
-pub const EscapedInput = struct {
+pub const RawInputEscaped = struct {
     num: ?u8 = null,
     mod: u8 = undefined,
 
@@ -23,7 +30,7 @@ pub const EscapedInput = struct {
     }
 };
 
-pub const CsiInput = struct {
+pub const RawInputCsi = struct {
     A: ?u16 = null,
     B: ?u16 = null,
     C: ?u16 = null,
@@ -57,12 +64,11 @@ const ReadState = enum {
 
 /// reads one RawInput from a reader, either a single character or a escaped string
 /// You should use a buffered reader.
-pub fn read_input(reader: anytype) @TypeOf(reader).NoEofError!RawInput {
+pub fn readOneEventRaw(reader: anytype) @TypeOf(reader).NoEofError!RawInput {
     var read_state = ReadState.normal;
     var input: RawInput = undefined;
-    var bytes: u4 = 0;
 
-    read_loop: while (true) : (bytes += 1) {
+    read_loop: while (true) {
         const char = try reader.readByte();
 
         switch (read_state) {

@@ -25,30 +25,31 @@ pub fn main() !void {
     const stdin = br.reader();
 
     while (true) {
-        //try print_ascii(stdout, try stdin.readByte());
-        //try bw.flush();
-        const in = try termi.input.read_input(stdin);
-
-        switch (in) {
-            .normal => |char| {
-                try print_ascii(stdout, char);
-                if (char == 3) break;
-            },
-            .escaped => |escaped| {
-                try escaped.print(stdout);
-            },
-            .csi => |csi| {
-                const parsed = termi.input.parseCsiInput(csi);
-
-                if (@as(termi.input.InputEventTag, parsed) == .unicode) {
-                    if (parsed.unicode.code == 'c' and parsed.unicode.modifier.ctrl) break;
-                }
-
-                try parsed.print(stdout);
-            },
-        }
-
+        try print_ascii(stdout, try stdin.readByte());
         try bw.flush();
+        //const in = try termi.input.readOneEventRaw(stdin);
+
+        //switch (in) {
+        //    .normal => |char| {
+        //        try print_ascii(stdout, char);
+        //        if (char == 3) break;
+        //    },
+        //    .escaped => |escaped| {
+        //        try escaped.print(stdout);
+        //    },
+        //    .csi => |csi| {
+        //        const parsed = termi.input.parseRawInputCsi(csi);
+
+        //        switch (parsed.code) {
+        //            .unicode => |c| if (c.code == 'c' and parsed.modifier.onlyActive(.ctrl)) break,
+        //            else => {},
+        //        }
+
+        //        try parsed.print(stdout);
+        //    },
+        //}
+
+        //try bw.flush();
     }
 }
 

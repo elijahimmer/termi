@@ -1,82 +1,73 @@
-pub const InputEventTag = enum {
-    unicode,
-    special,
-    unknown,
-};
+pub const MAX_CHORD_LENGTH = 16;
 
-/// unicode represents a single key press, and
-/// special is for non-unicode events (not ending in u)
-pub const InputEvent = union(InputEventTag) {
-    unicode: UnicodeInput,
-    special: SpecialInput,
-    unknown: void,
+pub const Input = struct {
+    code: Code,
+    modifier: InputModifiers = .{},
+    event: InputEvent = .press,
+    chord: std.BoundedArray(u8, MAX_CHORD_LENGTH),
 
     const Self = @This();
 
     /// Prints out the input in termi character format (I didn't just make that up)
     pub fn print(self: *const Self, writer: anytype) @TypeOf(writer).Error!void {
-        switch (self.*) {
-            .unicode => |u| try u.print(writer),
-            .special => |*s| if (s.event_type == .press) try s.print(writer), // should disable later
-            .unknown => try writer.print("unknown", .{}),
-        }
-    }
-};
-
-/// Represents a single key press.
-/// CSI unicode-key-code:alternate-key-codes ; modifiers:event-type ; text-as-codepoints u
-pub const UnicodeInput = struct {
-    /// the unicode key code
-    code: u16,
-    /// a alternate key code
-    alternate: ?u16 = null,
-    /// the key modifiers (shift, ctrl, etc.)
-    modifier: KeyModifiers = .{},
-    /// the event type
-    event_type: KeyEventType = .press,
-    /// the unicode code points
-    code_points: ?u24 = null,
-
-    const Self = @This();
-
-    /// Prints out the input in termi character format (I didn't just make that up)
-    pub fn print(self: *const Self, writer: anytype) @TypeOf(writer).Error!void {
-        if (self.event_type == .press) {
-            if (self.modifier.any()) {
+        if (self.event_type != .release) {
+            const has_modifiers = self.modifier.any();
+            if (has_modifiers) {
                 try writer.print("<", .{});
                 try self.modifier.print(writer);
                 try writer.print("-", .{});
             }
 
-            if (self.code <= std.math.maxInt(u8)) {
-                try writer.print("{c}", .{@as(u8, @intCast(self.code))});
-            } else {
-                try writer.print("{}", .{self.code});
+            switch (self.code) {
+                .unicode => |*u| try u.print(writer),
+                .special => |*s| if (self.event == .press) try writer.print("{s}", .{@tagName(s)}),
+                .unknown => try writer.print("unknown({s})", .{self.chord.constSlice()}),
             }
 
-            if (self.modifier.any()) try writer.print(">", .{});
+            if (has_modifiers) try writer.print(">", .{});
         }
     }
 };
 
-pub const SpecialInput = struct {
-    /// the special key pressed
-    code: SpecialInputType,
-    /// the modifiers applied to the key
-    modifier: KeyModifiers = .{},
-    /// the type of key event
-    event_type: KeyEventType = .press,
+pub const CodeTag = enum {
+    unicode,
+    special,
+    unknown,
+};
+
+pub const Code = union(CodeTag) {
+    unicode: InputUnicode,
+    special: InputSpecial,
+    unknown: void,
+};
+
+pub const InputUnicode = struct {
+    /// the unicode key code
+    code: u16,
+    /// a alternate key code
+    alternate: ?u16 = null,
+    /// the unicode code points
+    code_points: ?u24 = null,
 
     const Self = @This();
 
-    /// Prints out the input code
     pub fn print(self: *const Self, writer: anytype) @TypeOf(writer).Error!void {
-        try writer.print("{s}", .{@tagName(self.code)});
+        const bytes: u16 = if (self.code_point) |cp| bytes: {
+            const upper = @as(u8, @intCast(cp >> 16)); // the most significant 8 bits
+            if (upper > 0) writer.writeByte(upper);
+            break :bytes @as(u16, @truncate(cp));
+        } else if (self.alternate) |a| a else self.code;
+
+        const lower = @as(u8, @truncate(bytes)); // the least significant 8 bits
+        const middle = @as(u8, @truncate(bytes >> 8)); // the middle 8 bits.
+
+        if (middle > 0) writer.writeByte(middle);
+        writer.writeByte(lower);
     }
 };
 
 /// The type of key event (.press is default)
-pub const KeyEventType = enum(u2) {
+pub const InputEvent = enum(u2) {
     press = 1,
     repeat = 2,
     release = 3,
@@ -91,7 +82,7 @@ pub const KeyEventType = enum(u2) {
 /// meta      0b100000    (32)
 /// caps_lock 0b1000000   (64)
 /// num_lock  0b10000000  (128)
-pub const KeyModifiers = packed struct(u8) {
+pub const InputModifiers = packed struct(u8) {
     shift: bool = false,
     alt: bool = false,
     ctrl: bool = false,
@@ -104,12 +95,12 @@ pub const KeyModifiers = packed struct(u8) {
     const Self = @This();
 
     /// returns true if that tag is active, and is the only one.
-    pub fn onlyActive(self: *const Self, tag: KeyModifiersTag) bool {
+    pub fn onlyActive(self: *const Self, tag: InputModifiersTag) bool {
         const num = @as(u8, @bitCast(self.*));
 
-        const bit = (1 << @intFromEnum(tag));
+        const bit = (@as(u8, 1) << @intFromEnum(tag));
 
-        return (num & bit) > 0 and !(num ^ bit) > 0;
+        return (num & bit) > 0 and (num ^ bit) == 0;
     }
 
     /// returns true if any mods are true
@@ -135,7 +126,7 @@ pub const KeyModifiers = packed struct(u8) {
     }
 };
 
-pub const KeyModifiersTag = enum(u8) {
+pub const InputModifiersTag = enum(u3) {
     shift = 0,
     alt,
     ctrl,
@@ -147,7 +138,6 @@ pub const KeyModifiersTag = enum(u8) {
 };
 
 const input = @import("input.zig");
-const CsiInput = input.CsiInput;
-const SpecialInputType = input.SpecialInputType;
+const InputSpecial = input.InputSpecial;
 
 const std = @import("std");
