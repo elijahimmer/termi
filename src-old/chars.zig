@@ -1,5 +1,3 @@
-pub const CSI = "\u{1B}[";
-
 pub const NULL = 0;
 pub const SOH = 1;
 pub const STX = 2;
