@@ -38,6 +38,13 @@ pub const ProgressiveEnhancement = packed struct(u5) {
     /// this will empty the reader until the correct response, so you should to this immediately on program start.
     /// This should be fine in most cases.
     pub fn supported(writer: anytype, reader: anytype) (@TypeOf(writer).Error || @TypeOf(reader).NoEofError)!bool {
+        return try queryState(writer, reader) != null;
+    }
+
+    /// Query the current state from the terminal.
+    /// The reader should be empty before, all input before this test will be discarded.
+    /// The reader should be the stdin to the writer's stdout, so it actually connects without a infinite loop.
+    pub fn queryState(writer: anytype, reader: anytype) (@TypeOf(writer).Error || @TypeOf(reader).NoEofError)!?ProgressiveEnhancement {
         const ReadState = enum {
             normal,
             escaped,
@@ -46,33 +53,38 @@ pub const ProgressiveEnhancement = packed struct(u5) {
         };
 
         var read_state = ReadState.normal;
-        var result = false;
+        var read_result: u8 = 0;
+        var result: ?ProgressiveEnhancement = null;
 
-        try writer.print(CSI ++ "?u", .{});
-        try writer.print(CSI ++ "c", .{});
+        try writer.print(CSI ++ "?u" ++ CSI ++ "c", .{});
 
         while (true) {
             const char = try reader.readByte();
 
+            // this should be enough of a loop to get it all.
             switch (read_state) {
                 .normal => {
                     if (char == chars.ESC) read_state = .escaped;
                 },
-                .escaped => {
-                    if (char == '[') read_state = .csi;
-                },
-                .csi => {
-                    if (char == '?') read_state = .query;
-                },
+                .escaped => read_state = if (char == '[') .csi else .normal,
+                .csi => read_state = if (char == '?') .query else .normal,
                 .query => switch (char) {
-                    'u' => result = true,
+                    '0'...'9' => read_result = read_result * 10 + char_to_int(char),
+                    'u' => {
+                        result = @bitCast(@as(u5, @intCast(read_result -| 1)));
+                        read_state = .normal;
+                    },
                     'c' => return result,
-                    else => {},
+                    else => read_state = .normal,
                 },
             }
         }
     }
 };
+
+test {
+    @import("std").testing.refAllDecls(@This());
+}
 
 const termi = @import("termi.zig");
 const char_to_int = termi.utils.char_to_int;
@@ -81,4 +93,3 @@ const CSI = chars.CSI;
 
 const std = @import("std");
 const assert = std.debug.assert;
-const testing = std.testing;

@@ -1,5 +1,6 @@
 pub const CSI = "\u{1B}[";
 pub const SS3 = "\u{1B}O";
+pub const NL = [_:0]u8{ CR, '\n' };
 
 pub const NULL = 0;
 pub const SOH = 1;

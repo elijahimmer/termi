@@ -5,7 +5,7 @@ pub const RawInputCsi = struct {
     B: ?u16 = null,
     C: ?u16 = null,
     D: ?u16 = null,
-    E: ?u24 = null,
+    E: ?u16 = null,
     mod: u8,
     /// the chord that makes up the input
     chord: Chord = Chord{},
@@ -40,15 +40,16 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
             .normal => switch (char) {
                 chars.ESC => read_state = .escaped,
                 else => {
-                    log.warn("unimplemented input", .{});
-                    return unknown;
+                    var normal = parseNormalToInput(char);
+                    normal.chord = unknown.chord;
+                    return normal;
                 },
             },
             .escaped => switch (char) {
                 '[' => read_state = .A,
                 'O' => read_state = .SS3,
                 else => {
-                    log.warn("unimplemented input", .{});
+                    log.warn("escaped input unimplemented", .{});
                     return unknown;
                 },
             },
@@ -105,6 +106,39 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
     return parseCsiToInput(input);
 }
 
+pub fn parseNormalToInput(char: u8) Input {
+    return .{
+        .key_code = .{ .text = char },
+    };
+}
+
+pub fn parseSS3ToInput(mod: u8, ss3_number: u16, chord: Chord) Input {
+    _ = ss3_number;
+    return .{
+        .chord = chord,
+        .key_code = .{
+            .special = switch (mod) {
+                'A' => .up,
+                'B' => .down,
+                'C' => .right,
+                'D' => .left,
+                //'E' should be here, but I cannot find what it does...
+                'F' => .end,
+                'H' => .home,
+                'P' => .F1,
+                'Q' => .F2,
+                'R' => .F3,
+                'S' => .F4,
+                else => {
+                    log.warn("unknown SS3 escape code", .{});
+                    return .{ .chord = chord, .key_code = .{ .unknown = undefined } };
+                },
+            },
+        },
+    };
+}
+
+// CSI unicode-key-code:alternate-key-codes ; modifiers:event-type ; text-as-codepoints u
 pub fn parseCsiToInput(in: RawInputCsi) Input {
     const modifiers: Modifier = @bitCast(@as(u8, @truncate((in.C orelse 1) - 1)));
     const input_type: InputType = @enumFromInt(@as(u2, @intCast(in.D orelse 1)));
@@ -112,7 +146,7 @@ pub fn parseCsiToInput(in: RawInputCsi) Input {
     const unknown = .{ .chord = in.chord, .input_type = input_type, .modifiers = modifiers, .key_code = .{ .unknown = undefined } };
 
     return .{ .chord = in.chord, .input_type = input_type, .modifiers = modifiers, .key_code = .{ .special = switch (in.mod) {
-        'u' => switch (in.B orelse in.A orelse return unknown) {
+        'u' => switch (in.E orelse in.B orelse in.A orelse return unknown) {
             else => {
                 const key_code = in.B orelse in.A orelse {
                     log.warn("no character in input", .{});
@@ -266,32 +300,6 @@ pub fn parseCsiToInput(in: RawInputCsi) Input {
             return unknown;
         },
     } } };
-}
-
-pub fn parseSS3ToInput(mod: u8, ss3_number: u16, chord: Chord) Input {
-    _ = ss3_number;
-    return .{
-        .chord = chord,
-        .key_code = .{
-            .special = switch (mod) {
-                'A' => .up,
-                'B' => .down,
-                'C' => .right,
-                'D' => .left,
-                //'E' should be here, but I cannot find what it does...
-                'F' => .end,
-                'H' => .home,
-                'P' => .F1,
-                'Q' => .F2,
-                'R' => .F3,
-                'S' => .F4,
-                else => {
-                    log.warn("unknown SS3 escape code", .{});
-                    return .{ .chord = chord, .key_code = .{ .unknown = undefined } };
-                },
-            },
-        },
-    };
 }
 
 const termi = @import("../termi.zig");
