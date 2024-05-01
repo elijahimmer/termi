@@ -15,7 +15,6 @@ writer: WriterType,
 reader: ReaderType,
 progressive_state: ProgressiveState = .unverified,
 mode_start: ?posix.termios = null,
-bracketed_set: bool = false,
 
 const ProgressiveState = enum {
     unverified,
@@ -29,15 +28,24 @@ pub const ReadError = ReaderType.NoEofError;
 
 /// Initializes the TermManager.
 /// Should call deinit to clean up any changes.
-pub fn init(stdout: WriterType, stdin: ReaderType) TermManager {
-    return .{ .writer = stdout, .reader = stdin };
+/// This errors if the input files are not ttys.
+pub fn init(stdout: File, stdin: File) error{NotATerminal}!TermManager {
+    if (!posix.isatty(stdout.handle) and !posix.isatty(stdin.handle)) return error.NotATerminal;
+    return .{ .writer = stdout.writer(), .reader = stdin.reader() };
 }
 
 /// clean up changes made by TermManager.
+/// This deinits everything, even if it errors, returning the errors after.
 pub fn deinit(self: *TermManager) (WriteError || TermiosSetError)!void {
-    try self.progressiveReset();
-    try self.modeReset();
-    try self.bracketedPasteUnset();
+    const err1 = self.progressiveReset();
+    const err2 = self.modeReset();
+    const err3 = self.bracketedPasteUnset();
+    const err4 = self.alternateBufferLeave();
+
+    try err1;
+    try err2;
+    try err3;
+    try err4;
 }
 
 /// verifies if progressive is supported or not.
@@ -72,9 +80,26 @@ pub fn progressiveReset(self: *TermManager) WriteError!void {
     }
 }
 
+/// Records the terminal's start mode if it hasn't already
+pub fn modeGetStartState(self: *TermManager) TermiosGetError!termios {
+    if (self.mode_start) |m| return m else {
+        self.mode_start = try posix.tcgetattr(self.writer.context.handle);
+        return self.mode_start.?;
+    }
+}
+
+/// Gets the terminal's termios mode,
+/// as well as keeping track of the terminal's original state before changes.
+pub fn modeGet(self: *TermManager) TermiosGetError!termios {
+    const mode = try posix.tcgetattr(self.writer.context.handle);
+    if (self.mode_start == null) self.mode_start = mode;
+
+    return mode;
+}
+
 /// sets the terminal to raw mode
 pub fn modeSetRaw(self: *TermManager) (TermiosGetError || TermiosSetError)!void {
-    var term_raw = try self.modeGet();
+    var term_raw = try self.modeGetStartState();
 
     term_raw.iflag = .{
         .ICRNL = true,
@@ -87,18 +112,10 @@ pub fn modeSetRaw(self: *TermManager) (TermiosGetError || TermiosSetError)!void 
     try posix.tcsetattr(self.writer.context.handle, .NOW, term_raw);
 }
 
-/// gets the terminal's termios mode. This just call's posix's tcgetattr
-pub fn modeGet(self: *TermManager) TermiosGetError!termios {
-    const mode = try posix.tcgetattr(self.writer.context.handle);
-    if (self.mode_start == null) self.mode_start = mode;
-
-    return mode;
-}
-
-/// sets the terminal's termios mode. This just call's posix's tcsetattr
+/// sets the terminal's termios mode.
 /// and keeps track of the original state of the terminal.
 pub fn modeSet(self: *TermManager, mode: termios) (TermiosSetError || TermiosGetError)!void {
-    if (self.mode_start == null) _ = try self.modeGet();
+    if (self.mode_start == null) _ = try self.modeGetStartState();
     try posix.tcsetattr(self.writer.context.handle, .NOW, mode);
 }
 
@@ -108,24 +125,29 @@ pub fn modeReset(self: *TermManager) posix.TermiosSetError!void {
 }
 
 /// sets bracketed paste mode if it was not set yet.
-pub fn bracketedPasteSet(self: *TermManager) WriteError!void {
-    if (!self.bracketed_set) {
-        try self.writer.print(CSI ++ "?2004h", .{});
-        self.bracketed_set = false;
-    }
+pub fn bracketedPasteSet(self: TermManager) WriteError!void {
+    try Command.bracketed_paste_set.print(self.writer, .{});
 }
 
 /// unsets bracketed paste mode if it was set previously
-pub fn bracketedPasteUnset(self: *TermManager) WriteError!void {
-    if (self.bracketed_set) {
-        try self.bracketedPasteUnsetAssumeSet();
-        self.bracketed_set = false;
-    }
+pub fn bracketedPasteUnset(self: TermManager) WriteError!void {
+    try Command.bracketed_paste_unset.print(self.writer, .{});
 }
 
-/// always unsets the bracketed paste mode
-pub fn bracketedPasteUnsetAssumeSet(self: *TermManager) WriteError!void {
-    try self.writer.print(CSI ++ "?2004l", .{});
+/// always enters a alternate screen buffer (not always supported)
+pub fn alternateBufferEnter(self: TermManager) WriteError!void {
+    try Command.alternate_buffer_enter.print(self.writer, .{});
+}
+
+/// always leaves a alternate screen buffer (not always supported)
+pub fn alternateBufferLeave(self: TermManager) WriteError!void {
+    try Command.alternate_buffer_leave.print(self.writer, .{});
+}
+
+/// sends any command to the terminal. This does not keep track of commands sent,
+/// so sending through this will not keep track of the state properly. Use well.
+pub fn sendCommand(self: TermManager, comptime command: Command, args: anytype) WriteError!void {
+    try command.print(self.writer, args);
 }
 
 test {
@@ -134,7 +156,7 @@ test {
 
 const termi = @import("termi.zig");
 const ProgressiveEnhancement = termi.ProgressiveEnhancement;
-const CSI = termi.chars.CSI;
+const Command = termi.Command;
 
 const std = @import("std");
 const File = std.fs.File;

@@ -8,9 +8,13 @@ pub fn main() !void {
     //var br = std.io.bufferedReader(stdin_file.reader());
     //const stdin = br.reader();
 
-    var term_manager = TermManager.init(stdout_file.writer(), stdin_file.reader());
+    // set terminal mode
+    var term_manager = try TermManager.init(stdout_file, stdin_file);
     defer term_manager.deinit() catch {};
 
+    global_term_manager = &term_manager;
+
+    try term_manager.alternateBufferEnter();
     try term_manager.modeSetRaw();
     try term_manager.bracketedPasteSet();
     try term_manager.progressiveSet(.{
@@ -20,11 +24,17 @@ pub fn main() !void {
         .keys_as_escape_codes = true,
         .associated_text = true,
     });
+    try term_manager.sendCommand(.home, .{});
 
     while (true) {
         const input = try Input.parse.readOneInput(stdin_file.reader());
 
         try input.print(stdout);
+
+        switch (input.input_type) {
+            .release => continue,
+            else => {},
+        }
 
         try stdout.print("\t{s}   \tchord: '", .{@tagName(input.input_type)});
 
@@ -35,9 +45,9 @@ pub fn main() !void {
         try stdout.print("'{s}", .{chars.NL});
         try bw.flush();
 
-        if (@as(Input.KeyCodeTag, input.key_code) == .text and input.key_code.text == 'c' and input.modifiers.onlyActive(.ctrl)) {
-            break;
-        }
+        if (@as(Input.KeyCodeTag, input.key_code) == .text and input.key_code.text == 'c' and input.modifiers.onlyActive(.ctrl)) break;
+        //// test panic
+        //if (@as(Input.KeyCodeTag, input.key_code) == .text and input.key_code.text == 'z' and input.modifiers.onlyActive(.ctrl)) @panic("test panic");
     }
 }
 
@@ -49,6 +59,13 @@ pub fn print_ascii(writer: anytype, char: u8) @TypeOf(writer).Error!void {
         else => try writer.print("{c}", .{char}),
     }
 }
+
+pub fn panic(message: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
+    if (global_term_manager) |m| m.deinit() catch {};
+    std.builtin.default_panic(message, error_return_trace, ret_addr);
+}
+
+var global_term_manager: ?*TermManager = null;
 
 const termi = @import("termi.zig");
 const Input = termi.Input;

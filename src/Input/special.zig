@@ -1,4 +1,7 @@
 pub const Special = enum {
+    bracketed_paste_enter, // 200~
+    bracketed_paste_leave, // 201~
+    // common keys
     escape, // 27 u
     enter, // 13 u
     tab, // 9 u
@@ -13,12 +16,12 @@ pub const Special = enum {
     page_down, // 6 ~
     home, // 1 H or 7 ~
     end, // 1 F or 8 ~
-    caps_lock, // 57358 u
     scroll_lock, //57359 u
     num_lock, //57360 u
     print_screen, //57361 u
     pause, //57362 u
     menu, //57363 u
+    // function keys
     F1, //1 P or 11 ~
     F2, //1 Q or 12 ~
     F3, //13 ~
@@ -54,6 +57,7 @@ pub const Special = enum {
     F33, //57396 u
     F34, //57397 u
     F35, //57398 u
+    // key pad
     kp_0, //57399 u
     kp_1, //57400 u
     kp_2, //57401 u
@@ -83,6 +87,7 @@ pub const Special = enum {
     kp_insert, //57425 u
     kp_delete, //57426 u
     kp_begin, //1 E or 57427 ~
+    // Media
     media_play, //57428 u
     media_pause, //57429 u
     media_play_pause, //57430 u
@@ -96,6 +101,8 @@ pub const Special = enum {
     lower_volume, //57438 u
     raise_volume, //57439 u
     mute_volume, //57440 u
+    // modifiers
+    caps_lock, // 57358 u
     left_shift, //57441 u
     left_control, //57442 u
     left_alt, //57443 u
