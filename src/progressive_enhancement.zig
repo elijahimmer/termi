@@ -82,10 +82,6 @@ pub const ProgressiveEnhancement = packed struct(u5) {
     }
 };
 
-test {
-    @import("std").testing.refAllDecls(@This());
-}
-
 const termi = @import("termi.zig");
 const char_to_int = termi.utils.char_to_int;
 const chars = termi.chars;

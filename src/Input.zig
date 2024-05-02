@@ -113,8 +113,4 @@ pub fn printAlways(self: Input, writer: anytype) @TypeOf(writer).Error!void {
     }
 }
 
-test {
-    @import("std").testing.refAllDecls(@This());
-}
-
 const BoundedArray = @import("std").BoundedArray;

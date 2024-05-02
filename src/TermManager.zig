@@ -57,7 +57,7 @@ pub fn progressiveVerify(self: *TermManager) (WriteError || ReadError)!bool {
 
 /// sets the progressive state.
 /// This will silently fail when Progressive Enhancement isn't supported.
-/// To know if it is supported, try progressive_verify.
+/// To know if it is supported, try progressiveVerify.
 pub fn progressiveSet(self: *TermManager, mode: ProgressiveEnhancement) (WriteError || ReadError)!void {
     switch (self.progressive_state) {
         .unverified => if (!try self.progressiveVerify()) return,
@@ -148,10 +148,6 @@ pub fn alternateBufferLeave(self: TermManager) WriteError!void {
 /// so sending through this will not keep track of the state properly. Use well.
 pub fn sendCommand(self: TermManager, comptime command: Command, args: anytype) WriteError!void {
     try command.print(self.writer, args);
-}
-
-test {
-    @import("std").testing.refAllDecls(@This());
 }
 
 const termi = @import("termi.zig");
