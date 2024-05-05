@@ -15,6 +15,8 @@ writer: WriterType,
 reader: ReaderType,
 progressive_state: ProgressiveState = .unverified,
 mode_start: ?posix.termios = null,
+bracketede_paste_set: bool = false,
+alternate_buffer_set: bool = false,
 
 const ProgressiveState = enum {
     unverified,
@@ -124,24 +126,36 @@ pub fn modeReset(self: *TermManager) posix.TermiosSetError!void {
     if (self.mode_start) |m| try posix.tcsetattr(self.writer.context.handle, .NOW, m);
 }
 
-/// sets bracketed paste mode if it was not set yet.
-pub fn bracketedPasteSet(self: TermManager) WriteError!void {
-    try Command.bracketed_paste_set.print(self.writer, .{});
+/// sets bracketed paste mode if you haven't already
+pub fn bracketedPasteSet(self: *TermManager) WriteError!void {
+    if (!self.bracketede_paste_set) {
+        try Command.bracketed_paste_set.print(self.writer, .{});
+        self.bracketede_paste_set = true;
+    }
 }
 
-/// unsets bracketed paste mode if it was set previously
-pub fn bracketedPasteUnset(self: TermManager) WriteError!void {
-    try Command.bracketed_paste_unset.print(self.writer, .{});
+/// unsets bracketed paste mode if you've entered it
+pub fn bracketedPasteUnset(self: *TermManager) WriteError!void {
+    if (self.bracketede_paste_set) {
+        try Command.bracketed_paste_unset.print(self.writer, .{});
+        self.bracketede_paste_set = false;
+    }
 }
 
-/// always enters a alternate screen buffer (not always supported)
-pub fn alternateBufferEnter(self: TermManager) WriteError!void {
-    try Command.alternate_buffer_enter.print(self.writer, .{});
+/// enters a alternate screen buffer if not in one already (not always supported)
+pub fn alternateBufferEnter(self: *TermManager) WriteError!void {
+    if (!self.alternate_buffer_set) {
+        try Command.alternate_buffer_enter.print(self.writer, .{});
+        self.alternate_buffer_set = true;
+    }
 }
 
-/// always leaves a alternate screen buffer (not always supported)
-pub fn alternateBufferLeave(self: TermManager) WriteError!void {
-    try Command.alternate_buffer_leave.print(self.writer, .{});
+/// leaves a alternate screen buffer if you have entered one (not always supported)
+pub fn alternateBufferLeave(self: *TermManager) WriteError!void {
+    if (self.alternate_buffer_set) {
+        try Command.alternate_buffer_leave.print(self.writer, .{});
+        self.alternate_buffer_set = false;
+    }
 }
 
 /// sends any command to the terminal. This does not keep track of commands sent,

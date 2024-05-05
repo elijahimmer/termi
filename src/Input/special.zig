@@ -1,6 +1,6 @@
 pub const Special = enum {
-    bracketed_paste_enter, // 200~
-    bracketed_paste_leave, // 201~
+    bracketed_paste_start, // 200~
+    bracketed_paste_end, // 201~
     // common keys
     escape, // 27 u
     enter, // 13 u

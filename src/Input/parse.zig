@@ -106,14 +106,30 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
     return parseCsiToInput(input);
 }
 
+/// parse a single letter input, usually legacy input
 pub fn parseNormalToInput(char: u8) Input {
-    return .{
-        .key_code = .{ .text = char },
+    return switch (char) {
+        0, 27...31 => .{
+            .key_code = .{ .text = char + '@' },
+            .modifiers = .{ .ctrl = true },
+        },
+        1...26 => .{ // ^C should be the letter `c` with ctrl enabled
+            .key_code = .{ .text = char + '`' },
+            .modifiers = .{ .ctrl = true },
+        },
+        127 => .{
+            .key_code = .{ .special = .backspace },
+            .modifiers = .{ .ctrl = true },
+        },
+        else => .{
+            .key_code = .{ .text = char },
+        },
     };
 }
 
+/// parse a SS3 Chord to a input.
 pub fn parseSS3ToInput(mod: u8, ss3_number: u16, chord: Chord) Input {
-    _ = ss3_number;
+    _ = ss3_number; // I don't think we need this
     return .{
         .chord = chord,
         .key_code = .{
@@ -265,6 +281,7 @@ pub fn parseCsiToInput(in: RawInputCsi) Input {
         'H' => .home,
         'P' => .F1,
         'Q' => .F2,
+        'R' => .F3,
         'S' => .F4,
         '~' => switch (in.A orelse {
             log.warn("unknown input", .{});
@@ -289,6 +306,8 @@ pub fn parseCsiToInput(in: RawInputCsi) Input {
             23 => .F11,
             24 => .F12,
             29 => .menu,
+            200 => .bracketed_paste_start,
+            201 => .bracketed_paste_end,
             57427 => .kp_begin,
             else => {
                 log.warn("unknown input", .{});

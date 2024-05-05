@@ -38,11 +38,9 @@ pub fn main() !void {
 
         try stdout.print("\t{s}   \tchord: '", .{@tagName(input.input_type)});
 
-        for (input.chord.constSlice()) |c| {
-            try print_ascii(stdout, c);
-        }
+        for (input.chord.constSlice()) |c| try print_ascii(stdout, c);
 
-        try stdout.print("'{s}", .{chars.NL});
+        try stdout.writeAll("'" ++ chars.NL);
         try bw.flush();
 
         if (@as(Input.KeyCodeTag, input.key_code) == .text and input.key_code.text == 'c' and input.modifiers.onlyActive(.ctrl)) break;
@@ -55,7 +53,7 @@ pub fn print_ascii(writer: anytype, char: u8) @TypeOf(writer).Error!void {
     switch (char) {
         // 1 => "^A", 2 => "^B", 3 => "^C", etc
         0...31 => try writer.print("^{c}", .{'A' - 1 + char}),
-        127 => try writer.print("Backspace", .{}),
+        127 => try writer.writeAll("Backspace"),
         else => try writer.print("{c}", .{char}),
     }
 }
@@ -63,6 +61,26 @@ pub fn print_ascii(writer: anytype, char: u8) @TypeOf(writer).Error!void {
 pub fn panic(message: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
     if (global_term_manager) |m| m.deinit() catch {};
     std.builtin.default_panic(message, error_return_trace, ret_addr);
+}
+
+pub const std_options = std.Options{
+    .logFn = logFn,
+};
+
+/// copy of std.log.defaultLog, but with a carriage return
+pub fn logFn(comptime message_level: std.log.Level, comptime scope: @TypeOf(.enum_literal), comptime format: []const u8, args: anytype) void {
+    const level_txt = comptime message_level.asText();
+    const prefix2 = if (scope == .default) ": " else "(" ++ @tagName(scope) ++ "): ";
+    const stderr = std.io.getStdErr().writer();
+    var bw = std.io.bufferedWriter(stderr);
+    const writer = bw.writer();
+
+    std.debug.getStderrMutex().lock();
+    defer std.debug.getStderrMutex().unlock();
+    nosuspend {
+        writer.print(level_txt ++ prefix2 ++ format ++ chars.NL, args) catch return;
+        bw.flush() catch return;
+    }
 }
 
 var global_term_manager: ?*TermManager = null;
