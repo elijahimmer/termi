@@ -82,7 +82,7 @@ pub const ProgressiveEnhancement = packed struct(u5) {
     }
 };
 
-const termi = @import("termi.zig");
+const termi = @import("root.zig");
 const char_to_int = termi.utils.char_to_int;
 const chars = termi.chars;
 const CSI = chars.CSI;

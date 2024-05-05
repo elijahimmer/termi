@@ -164,7 +164,7 @@ pub fn sendCommand(self: TermManager, comptime command: Command, args: anytype) 
     try command.print(self.writer, args);
 }
 
-const termi = @import("termi.zig");
+const termi = @import("root.zig");
 const ProgressiveEnhancement = termi.ProgressiveEnhancement;
 const Command = termi.Command;
 

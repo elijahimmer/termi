@@ -321,7 +321,7 @@ pub fn parseCsiToInput(in: RawInputCsi) Input {
     } } };
 }
 
-const termi = @import("../termi.zig");
+const termi = @import("../root.zig");
 const log = termi.log;
 const Input = termi.Input;
 const Modifier = Input.Modifiers;

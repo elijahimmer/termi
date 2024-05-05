@@ -63,5 +63,5 @@ pub const Command = enum {
     }
 };
 
-const termi = @import("termi.zig");
+const termi = @import("root.zig");
 const CSI = termi.chars.CSI;

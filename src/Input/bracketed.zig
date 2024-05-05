@@ -40,7 +40,7 @@ const ReadState = enum {
     csi,
 };
 
-const termi = @import("../termi.zig");
+const termi = @import("../root.zig");
 const chars = termi.chars;
 const char_to_int = termi.utils.char_to_int;
 
