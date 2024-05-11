@@ -2,8 +2,6 @@
 pub const CSI = [_]u8{ ESC, '[' };
 /// the SS3 Modifier
 pub const SS3 = [_]u8{ ESC, 'O' };
-/// NL and CR in one
-pub const NL = [_]u8{ CR, '\n' };
 
 pub const NULL = 0;
 pub const SOH = 1;
