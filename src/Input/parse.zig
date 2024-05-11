@@ -54,11 +54,11 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
                 },
             },
             .SS3 => switch (char) {
-                '0'...'9' => ss3_number = (ss3_number orelse 0) * 10 + char_to_int(char),
+                '0'...'9' => ss3_number = (ss3_number orelse 0) * 10 + charToInt(char),
                 else => return parseSS3ToInput(char, ss3_number orelse 1, unknown.chord),
             },
             .A => switch (char) {
-                '0'...'9' => input.A = (input.A orelse 0) * 10 + char_to_int(char),
+                '0'...'9' => input.A = (input.A orelse 0) * 10 + charToInt(char),
                 ':' => read_state = .B,
                 ';' => read_state = .C,
                 else => {
@@ -67,7 +67,7 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
                 },
             },
             .B => switch (char) {
-                '0'...'9' => input.B = (input.B orelse 0) * 10 + char_to_int(char),
+                '0'...'9' => input.B = (input.B orelse 0) * 10 + charToInt(char),
                 ';' => read_state = .C,
                 else => {
                     input.mod = char;
@@ -75,7 +75,7 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
                 },
             },
             .C => switch (char) {
-                '0'...'9' => input.C = (input.C orelse 0) * 10 + char_to_int(char),
+                '0'...'9' => input.C = (input.C orelse 0) * 10 + charToInt(char),
                 ':' => read_state = .D,
                 ';' => read_state = .E,
                 else => {
@@ -84,7 +84,7 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
                 },
             },
             .D => switch (char) {
-                '0'...'9' => input.D = (input.D orelse 0) * 10 + char_to_int(char),
+                '0'...'9' => input.D = (input.D orelse 0) * 10 + charToInt(char),
                 ';' => read_state = .E,
                 else => {
                     input.mod = char;
@@ -92,7 +92,7 @@ pub fn readOneInput(reader: anytype) @TypeOf(reader).NoEofError!Input {
                 },
             },
             .E => switch (char) {
-                '0'...'9' => input.E = (input.E orelse 0) * 10 + char_to_int(char),
+                '0'...'9' => input.E = (input.E orelse 0) * 10 + charToInt(char),
                 else => {
                     input.mod = char;
                     break :read_loop;
@@ -329,7 +329,7 @@ const InputType = Input.InputType;
 const Chord = Input.Chord;
 const chars = termi.chars;
 const CSI = chars.CSI;
-const char_to_int = termi.utils.char_to_int;
+const charToInt = termi.utils.charToInt;
 
 const std = @import("std");
 const expectEqual = std.testing.expectEqual;

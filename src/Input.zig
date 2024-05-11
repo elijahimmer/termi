@@ -106,4 +106,10 @@ pub fn print(self: Input, writer: anytype) @TypeOf(writer).Error!void {
     }
 }
 
+pub fn printChord(self: Input, writer: anytype) @TypeOf(writer).Error!void {
+    for (self.chord.constSlice()) |c| try printAscii(writer, c);
+}
+
+const printAscii = @import("root.zig").utils.printAscii;
+
 const BoundedArray = @import("std").BoundedArray;

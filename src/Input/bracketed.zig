@@ -19,7 +19,7 @@ pub fn readBracketedPaste(reader: anytype, allocator: Allocator) @TypeOf(reader)
                     else => break :char_loop,
                 },
                 .csi => switch (char) {
-                    '0'...'9' => csi_number = (csi_number * 10) + char_to_int(char),
+                    '0'...'9' => csi_number = (csi_number * 10) + charToInt(char),
                     '~' => switch (csi_number) {
                         // TODO: Consider nested bracketed paste? (is that even possible/probable)?
                         201 => break :read_loop,
@@ -42,7 +42,7 @@ const ReadState = enum {
 
 const termi = @import("../root.zig");
 const chars = termi.chars;
-const char_to_int = termi.utils.char_to_int;
+const charToInt = termi.utils.charToInt;
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;

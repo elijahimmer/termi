@@ -69,7 +69,7 @@ pub const ProgressiveEnhancement = packed struct(u5) {
                 .escaped => read_state = if (char == '[') .csi else .normal,
                 .csi => read_state = if (char == '?') .query else .normal,
                 .query => switch (char) {
-                    '0'...'9' => read_result = read_result * 10 + char_to_int(char),
+                    '0'...'9' => read_result = read_result * 10 + charToInt(char),
                     'u' => {
                         result = @bitCast(@as(u5, @intCast(read_result -| 1)));
                         read_state = .normal;
@@ -83,7 +83,7 @@ pub const ProgressiveEnhancement = packed struct(u5) {
 };
 
 const termi = @import("root.zig");
-const char_to_int = termi.utils.char_to_int;
+const charToInt = termi.utils.charToInt;
 const chars = termi.chars;
 const CSI = chars.CSI;
 
