@@ -90,14 +90,7 @@ pub const Chord = BoundedArray(u8, 32);
 
 /// print out a string representing the input in the termi style (similar to vim)
 /// This shows any modifiers that were pressed down.
-/// This only prints if the event is not a release event.
 pub fn print(self: Input, writer: anytype) @TypeOf(writer).Error!void {
-    if (self.input_type != .release) try self.printAlways(writer);
-}
-
-/// print out a string representing the input in the termi style (similar to vim)
-/// This shows any modifiers that were pressed down.
-pub fn printAlways(self: Input, writer: anytype) @TypeOf(writer).Error!void {
     switch (self.key_code) {
         .text => |text| {
             const anyMods = self.modifiers.anyActive();
